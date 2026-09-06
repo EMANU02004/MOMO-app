@@ -12,4 +12,4 @@ relational (SQLite) database, and exposes the results through a frontend dashboa
 
 - Emmanuel Masambu — [EMANU02004](https://github.com/EMANU02004)
 - Pauline — [pmiyienda-dotcom](https://github.com/pmiyienda-dotcom)
-- Marion Gitau — [@github-handle](https://github.com/github-handle)
+- Marion Gitau — [mgitau-sys](https://github.com/mgitau-sys)
