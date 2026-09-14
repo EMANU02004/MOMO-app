@@ -28,23 +28,77 @@ We use Trello to organize our tasks and track their progress throughout the proj
 |---|---|---|
 | Raw Data | XML / JSON | `data/raw/`, `dsa/` |
 | ETL Pipeline | Python | `etl/` |
-| Database | SQLite | `data/db.sqlite3` |
+| Database | SQLite (runtime) / MySQL (design) | `data/db.sqlite3`, `database/` |
 | API | FastAPI | `api/` |
 | Frontend | HTML / JS / CSS | `index.html`, `web/` |
 | Tests | pytest | `tests/` |
 
-## Database Design
+## Database Design (Week 2)
 
-### `transactions` table
+### ERD & Design Rationale
+See [`docs/erd_design.md`](docs/erd_design.md) for the full ERD specification and design rationale, and `docs/erd_diagram.png` for the Draw.io export.
 
+### Tables
+
+#### `transaction_categories`
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique record identifier |
-| `address` | TEXT | | Sender phone number (E.164 format) |
-| `date` | TEXT | | Transaction datetime (YYYY-MM-DD HH:MM:SS) |
-| `body` | TEXT | UNIQUE | Original SMS message text |
-| `amount` | REAL | NULLABLE | Extracted RWF amount |
-| `category` | TEXT | | One of: `incoming_money`, `payment`, `transfer`, `withdrawal`, `airtime`, `third_party_initiated`, `other` |
+| `id` | INT UNSIGNED | PK AUTO_INCREMENT | Surrogate key |
+| `name` | VARCHAR(50) | UNIQUE, CHECK (7 values) | Category slug |
+| `description` | VARCHAR(255) | | Human-readable label |
+| `created_at` | DATETIME | DEFAULT NOW | Row creation time |
+
+#### `users`
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | INT UNSIGNED | PK AUTO_INCREMENT | Surrogate key |
+| `phone` | VARCHAR(20) | UNIQUE, CHECK E.164 | Phone number |
+| `display_name` | VARCHAR(100) | | Name parsed from SMS |
+| `created_at` | DATETIME | DEFAULT NOW | Row creation time |
+
+#### `transactions`
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | INT UNSIGNED | PK AUTO_INCREMENT | Surrogate key |
+| `user_id` | INT UNSIGNED | FK → users | Account owner |
+| `category_id` | INT UNSIGNED | FK → transaction_categories | SMS category |
+| `address` | VARCHAR(20) | | Raw sender address |
+| `date` | DATETIME | | Transaction timestamp (UTC) |
+| `body` | TEXT | | Original SMS text |
+| `amount` | DECIMAL(15,2) | NULLABLE, ≥ 0 | Extracted RWF amount |
+| `body_hash` | CHAR(64) | UNIQUE | SHA-256 for deduplication |
+| `created_at` | DATETIME | DEFAULT NOW | Row creation time |
+
+#### `transaction_parties` *(junction — resolves M:N)*
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `transaction_id` | INT UNSIGNED | PK, FK → transactions | |
+| `user_id` | INT UNSIGNED | PK, FK → users | |
+| `role` | VARCHAR(20) | PK, CHECK (4 values) | sender / receiver / agent / merchant |
+
+#### `system_logs`
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | INT UNSIGNED | PK AUTO_INCREMENT | Surrogate key |
+| `transaction_id` | INT UNSIGNED | NULLABLE FK → transactions | NULL for pipeline-level events |
+| `level` | VARCHAR(10) | CHECK (INFO/WARNING/ERROR) | Log severity |
+| `event` | VARCHAR(100) | | Short event code |
+| `message` | TEXT | | Detailed message |
+| `created_at` | DATETIME | DEFAULT NOW | Log timestamp |
+
+### Key Relationships
+- `users` → `transactions` : **1 : M** (one owner, many transactions)
+- `transaction_categories` → `transactions` : **1 : M**
+- `transactions` ↔ `users` via `transaction_parties` : **M : N** (junction table)
+- `transactions` → `system_logs` : **1 : M**
+
+### Deliverable Files
+| File | Purpose |
+|---|---|
+| `database/database_setup.sql` | Full DDL + sample DML + CRUD queries |
+| `examples/json_schemas.json` | JSON schemas for all entities + complex nested example |
+| `docs/erd_design.md` | ERD spec, cardinality table, design rationale |
+| `docs/momo_ERD.png` | Draw.io ERD export |
 
 ## Project Structure
 ```
@@ -53,6 +107,13 @@ We use Trello to organize our tasks and track their progress throughout the proj
 ├── .env.example
 ├── requirements.txt
 ├── index.html
+├── docs/                          ← Week 2: ERD & design docs
+│   ├── erd_design.md
+│   └── erd_diagram.png
+├── database/                      ← Week 2: MySQL setup script
+│   └── database_setup.sql
+├── examples/                      ← Week 2: JSON schemas
+│   └── json_schemas.json
 ├── web/
 │   ├── styles.css
 │   ├── chart_handler.js
