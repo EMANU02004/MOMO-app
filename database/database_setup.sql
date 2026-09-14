@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS system_logs (
     transaction_id INT          UNSIGNED NULL                       COMMENT 'FK → transactions.id; NULL for pipeline-level events',
     level          VARCHAR(10)  NOT NULL DEFAULT 'INFO'             COMMENT 'INFO | WARNING | ERROR',
     event          VARCHAR(100) NOT NULL                            COMMENT 'Short event code, e.g. PARSE_FAILED',
-    message        TEXT         NOT NULL DEFAULT ''                 COMMENT 'Detailed log message',
+    message        TEXT         NOT NULL                 COMMENT 'Detailed log message',
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_log_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL ON UPDATE CASCADE,
